@@ -29,8 +29,8 @@ export const NAV: NavItem[] = [
   },
   {
     href: "/chat",
-    label: "Build with AI",
-    description: "Ask the OS to create a new system",
+    label: "Ask the OS",
+    description: "Query your state, get forward-looking advice",
     icon: MessagesSquare,
     group: "Daily",
   },

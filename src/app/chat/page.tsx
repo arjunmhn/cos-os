@@ -25,31 +25,41 @@ import { useCompanyProfile } from "@/components/providers/company-profile-provid
 import { DEFAULT_OKRS, DEFAULT_DECISIONS } from "@/lib/content/cadence";
 import { DEFAULT_ROLES, DEFAULT_CANDIDATES, type RoleMoc, type Candidate } from "@/lib/content/people";
 import { DEFAULT_DEALS, type Deal } from "@/lib/content/gtm";
+import { KPI_SERIES } from "@/lib/content/board";
 import type { Decision, Objective } from "@/lib/types";
+import type { KpiSnapshot } from "@/lib/cos-persona";
 import { MarkdownContent } from "@/components/ui/markdown-view";
 
 type Turn = { role: "user" | "assistant"; body: string };
 
 const SUGGESTIONS: { label: string; prompt: string }[] = [
   {
-    label: "Draft a VP Eng MOC",
-    prompt: "Draft a Mission · Outcomes · Competencies spec for a VP Engineering hire focused on shipping the v2 platform.",
+    label: "Quarter at risk?",
+    prompt: "Walk me through what's at risk this quarter. Look across OKRs, pipeline coverage, hiring funnel, and recent decisions. Tell me the top 3 risks and what to do about each.",
   },
   {
-    label: "Quarterly planning agenda",
-    prompt: "Generate the agenda for a quarterly planning offsite, anchored on our active OKRs and recent decisions.",
+    label: "Top 3 priorities for next week",
+    prompt: "Based on the live OS state, what should be my top 3 priorities for next week as Chief of Staff? Be specific — name the OKR, deal, or hire each priority maps to.",
   },
   {
-    label: "Retrostudy template",
-    prompt: "Build a per-customer retrostudy template Sales can pull into proposals — baseline, lever attribution, dollar impact.",
+    label: "Pipeline health",
+    prompt: "Diagnose pipeline health. Use coverage ratio, segment mix, slipped deals, and ICP composition. What action would most improve the quarter forecast?",
   },
   {
-    label: "April investor update",
-    prompt: "Synthesize the last 4 weeks of decisions and active OKRs into a draft monthly investor update.",
+    label: "Hiring funnel velocity",
+    prompt: "How is hiring velocity trending? Identify the slowest stage in the funnel and propose a fix. Reference candidate names and days-in-stage where relevant.",
   },
   {
-    label: "Hiring system audit",
-    prompt: "What's missing from our hiring system if we want to scale from our current team to 80 by year-end? Be specific about the gaps.",
+    label: "What changed in 30 days",
+    prompt: "Summarize what materially changed in the last 30 days across decisions, OKR status, deal movement, and KPI trends. What deserves the CEO's attention this week?",
+  },
+  {
+    label: "OKR retrospective",
+    prompt: "Run a mid-quarter OKR retrospective. For each objective, name what's on track, what's at risk, and the specific action that would change the trajectory.",
+  },
+  {
+    label: "Forecast the quarter",
+    prompt: "Forecast where we land this quarter on ARR, win rate, and headcount. Anchor on KPI trends and pipeline composition. State the assumptions you're making.",
   },
 ];
 
@@ -88,13 +98,24 @@ export default function ChatPage() {
     setTranscript(next);
     setPrompt("");
 
+    // Slim KPI data for the prompt — drop the formatter function (not serializable)
+    const kpis: KpiSnapshot[] = KPI_SERIES.map((k) => ({
+      id: k.id,
+      label: k.label,
+      unit: k.unit,
+      latest: k.data[k.data.length - 1].value,
+      prev: k.data[k.data.length - 2].value,
+      target: k.target,
+      series: k.data.map((d) => ({ month: d.month, value: d.value })),
+    }));
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: next.map((t) => ({ role: t.role, content: t.body })),
-          osState: { profile, okrs, decisions, roles, candidates, deals },
+          osState: { profile, okrs, decisions, roles, candidates, deals, kpis },
         }),
       });
       const data = await res.json();
@@ -121,9 +142,9 @@ export default function ChatPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Build with AI"
-        title="Ask the OS to build you a new system."
-        description="Live chat with your OS state in context. Demo capped at 8 messages per browser — clear localStorage to reset."
+        eyebrow="Ask the OS"
+        title="Query your company. Backward, current, and forward."
+        description="Natural-language analyst over your live OS state. Ask about a metric, a deal, a hire, or what to do this week — answers come grounded in your data with a recommendation, not just a recap."
         actions={
           <Badge tone={limitReached ? "rose" : remaining <= 2 ? "amber" : "indigo"} dot>
             {remaining}/{SESSION_LIMIT} remaining
@@ -137,13 +158,13 @@ export default function ChatPage() {
           <Card className="p-0 overflow-hidden">
             <div className="px-4 sm:px-5 py-3 border-b divider flex items-center justify-between gap-3 bg-zinc-50/40">
               <div className="min-w-0">
-                <CardEyebrow>Composer</CardEyebrow>
+                <CardEyebrow>Question</CardEyebrow>
                 <h3 className="mt-0.5 text-[14px] font-semibold tracking-tight text-zinc-900 truncate">
-                  What do you want to build?
+                  What do you want to know?
                 </h3>
               </div>
               <Badge tone="neutral" className="shrink-0">
-                <Cpu className="h-3 w-3" /> haiku-4-5
+                <Cpu className="h-3 w-3" /> sonnet-4-6
               </Badge>
             </div>
 
@@ -167,7 +188,7 @@ export default function ChatPage() {
                   placeholder={
                     limitReached
                       ? "Demo limit reached — clear browser storage to reset"
-                      : "e.g. Build me a customer health scoring framework that surfaces churn risk 60 days early…"
+                      : "e.g. Where am I most behind on OKRs? What deals are at risk this quarter? What changed in the last 30 days?"
                   }
                   disabled={limitReached || pending}
                   className="border-0 shadow-none focus:ring-0 focus:border-0 min-h-[80px] p-1.5 resize-y"
@@ -240,9 +261,19 @@ export default function ChatPage() {
                 <div className="px-6 py-12 text-center">
                   <Sparkles className="h-5 w-5 text-zinc-300 mx-auto" />
                   <div className="mt-3 text-[14px] font-semibold text-zinc-700">No conversation yet</div>
-                  <div className="mt-1 text-[12px] text-zinc-500 max-w-sm mx-auto">
-                    Send your first message above. The OS reads your live state — profile, OKRs, decisions, roles,
-                    deals — into every prompt.
+                  <div className="mt-1 text-[12px] text-zinc-500 max-w-md mx-auto">
+                    Ask anything about your company. Answers come grounded in your live state with a forward-looking
+                    recommendation — not just a recap.
+                  </div>
+                  <div className="mt-4 flex items-center justify-center gap-1.5 flex-wrap text-[10.5px] text-zinc-400">
+                    <span className="font-mono">Visible to chat:</span>
+                    <Badge tone="neutral">{okrs.length} objectives</Badge>
+                    <Badge tone="neutral">{okrs.reduce((s, o) => s + o.keyResults.length, 0)} KRs</Badge>
+                    <Badge tone="neutral">{decisions.length} decisions</Badge>
+                    <Badge tone="neutral">{roles.length} roles</Badge>
+                    <Badge tone="neutral">{candidates.length} candidates</Badge>
+                    <Badge tone="neutral">{deals.length} deals</Badge>
+                    <Badge tone="neutral">{KPI_SERIES.length} KPI series</Badge>
                   </div>
                 </div>
               ) : (
@@ -314,22 +345,18 @@ export default function ChatPage() {
               <li className="flex items-start gap-2.5">
                 <Wrench className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
                 <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-zinc-900">Server-side</div>
+                  <div className="text-[13px] font-semibold text-zinc-900">Two halves to every answer</div>
                   <div className="text-[11.5px] text-zinc-500 leading-relaxed break-words">
-                    Routed through{" "}
-                    <code className="font-mono text-[10.5px] bg-zinc-100 rounded px-1 break-all">
-                      /api/chat
-                    </code>{" "}
-                    with the OS persona prompt-cached.
+                    Observation grounded in your data, then a forward-looking recommendation.
                   </div>
                 </div>
               </li>
               <li className="flex items-start gap-2.5">
                 <Code2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
                 <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-zinc-900">Reads your state</div>
+                  <div className="text-[13px] font-semibold text-zinc-900">Reads your live state</div>
                   <div className="text-[11.5px] text-zinc-500 leading-relaxed break-words">
-                    Profile, OKRs, decisions, roles, candidates, and deals attach to every request.
+                    Profile, OKRs, decisions, roles, candidates, deals, and 12 months of KPI trends.
                   </div>
                 </div>
               </li>
@@ -338,7 +365,8 @@ export default function ChatPage() {
                 <div className="min-w-0">
                   <div className="text-[13px] font-semibold text-zinc-900">Rate-limited demo</div>
                   <div className="text-[11.5px] text-zinc-500 leading-relaxed break-words">
-                    8 messages per browser, Haiku model, max-tokens capped at 1024.
+                    8 messages per browser, Sonnet 4.6, max-tokens capped at 2048. Edit your OKRs / deals to see
+                    answers shift.
                   </div>
                 </div>
               </li>

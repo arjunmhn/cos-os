@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { COS_PERSONA, formatOsState } from "@/lib/cos-persona";
 
-const MODEL = "claude-haiku-4-5";
-const MAX_TOKENS = 1024;
+const MODEL = "claude-sonnet-4-6";
+const MAX_TOKENS = 2048;
 
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
