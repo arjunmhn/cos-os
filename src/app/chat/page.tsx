@@ -5,7 +5,7 @@ import { Card, CardEyebrow } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowUp,
@@ -94,6 +94,7 @@ export default function ChatPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const prevBlockCount = useRef(0);
 
   const remaining = Math.max(0, SESSION_LIMIT - usedCount);
   const limitReached = remaining <= 0;
@@ -113,6 +114,21 @@ export default function ChatPage() {
   }, [transcript]);
 
   const ordered = useMemo(() => [...blocks].reverse(), [blocks]);
+
+  // Auto-expand the newest question whenever a new one is added.
+  // (Doesn't fight the user once they've explicitly toggled it.)
+  useEffect(() => {
+    if (blocks.length > prevBlockCount.current && blocks.length > 0) {
+      const newestId = blocks[blocks.length - 1].id;
+      setExpanded((prev) => {
+        if (prev.has(newestId)) return prev;
+        const next = new Set(prev);
+        next.add(newestId);
+        return next;
+      });
+    }
+    prevBlockCount.current = blocks.length;
+  }, [blocks]);
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
@@ -319,7 +335,7 @@ export default function ChatPage() {
               <div className="divide-y divider">
                 {ordered.map((b, i) => {
                   const isNewest = i === 0;
-                  const isOpen = isNewest || expanded.has(b.id);
+                  const isOpen = expanded.has(b.id);
                   const isPending = isNewest && pending && !b.assistant;
                   return (
                     <QACard
@@ -442,19 +458,17 @@ function QACard({
                 </Badge>
               )}
             </div>
-            {!isNewest && (
-              <button
-                onClick={onToggle}
-                className="text-[11px] text-zinc-500 hover:text-zinc-900 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md hover:bg-zinc-100 transition-colors"
-                aria-label={isOpen ? "Collapse answer" : "Expand answer"}
-                aria-expanded={isOpen}
-              >
-                {isOpen ? "Collapse" : "Expand"}
-                <ChevronDown
-                  className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")}
-                />
-              </button>
-            )}
+            <button
+              onClick={onToggle}
+              className="text-[11px] text-zinc-500 hover:text-zinc-900 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md hover:bg-zinc-100 transition-colors"
+              aria-label={isOpen ? "Collapse answer" : "Expand answer"}
+              aria-expanded={isOpen}
+            >
+              {isOpen ? "Collapse" : "Expand"}
+              <ChevronDown
+                className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")}
+              />
+            </button>
           </div>
 
           <button

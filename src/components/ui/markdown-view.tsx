@@ -32,6 +32,10 @@ export function MarkdownContent({
   density?: "regular" | "compact";
 }) {
   const blocks = useMemo(() => parse(body), [body]);
+
+  // Group into intro + topical sections when there are >= 2 H2 headers.
+  const groups = useMemo(() => groupSections(blocks), [blocks]);
+
   return (
     <div
       className={cn(
@@ -40,9 +44,69 @@ export function MarkdownContent({
         className
       )}
     >
-      {blocks.map((b, i) => renderBlock(b, i, density))}
+      {groups.map((g, gi) => {
+        if (g.kind === "flat") {
+          return (
+            <div key={gi}>
+              {g.blocks.map((b, i) => renderBlock(b, i, density))}
+            </div>
+          );
+        }
+        if (g.kind === "intro") {
+          return (
+            <div key={gi}>
+              {g.blocks.map((b, i) => renderBlock(b, i, density))}
+            </div>
+          );
+        }
+        // section card
+        return <SectionCard key={gi} heading={g.heading} body={g.blocks} density={density} />;
+      })}
     </div>
   );
+}
+
+type Group =
+  | { kind: "flat"; blocks: Block[] }
+  | { kind: "intro"; blocks: Block[] }
+  | { kind: "section"; heading: string; blocks: Block[] };
+
+function groupSections(blocks: Block[]): Group[] {
+  const h2Count = blocks.filter((b) => b.type === "h" && b.level === 2).length;
+  if (h2Count < 2) {
+    return [{ kind: "flat", blocks }];
+  }
+
+  const groups: Group[] = [];
+  let intro: Block[] = [];
+  let currentHeading: string | null = null;
+  let currentBody: Block[] = [];
+
+  const pushCurrent = () => {
+    if (currentHeading !== null) {
+      groups.push({ kind: "section", heading: currentHeading, blocks: currentBody });
+      currentHeading = null;
+      currentBody = [];
+    }
+  };
+
+  for (const b of blocks) {
+    if (b.type === "h" && b.level === 2) {
+      if (intro.length > 0) {
+        groups.push({ kind: "intro", blocks: intro });
+        intro = [];
+      }
+      pushCurrent();
+      currentHeading = b.inline;
+    } else if (currentHeading !== null) {
+      currentBody.push(b);
+    } else {
+      intro.push(b);
+    }
+  }
+  if (intro.length > 0) groups.push({ kind: "intro", blocks: intro });
+  pushCurrent();
+  return groups;
 }
 
 export function MarkdownDocument({
@@ -155,6 +219,7 @@ type Block =
   | { type: "code"; lang?: string; lines: string[] }
   | { type: "kpi"; raw: string }
   | { type: "chart"; raw: string }
+  | { type: "callout"; raw: string }
   | { type: "blockquote"; inline: string }
   | { type: "table"; headers: string[]; align: Align[]; rows: string[][] }
   | { type: "hr" };
@@ -207,6 +272,8 @@ function parse(md: string): Block[] {
           blocks.push({ type: "kpi", raw: codeBuf.join("\n") });
         } else if (lang === "chart") {
           blocks.push({ type: "chart", raw: codeBuf.join("\n") });
+        } else if (lang === "callout") {
+          blocks.push({ type: "callout", raw: codeBuf.join("\n") });
         } else {
           blocks.push({ type: "code", lang: codeLang, lines: codeBuf });
         }
@@ -336,6 +403,9 @@ function renderBlock(b: Block, key: number, density: "regular" | "compact"): Rea
   if (b.type === "chart") {
     return <ChartBlock key={key} raw={b.raw} compact={compact} />;
   }
+  if (b.type === "callout") {
+    return <CalloutBlock key={key} raw={b.raw} compact={compact} />;
+  }
   if (b.type === "table") {
     return <TableBlock key={key} block={b} compact={compact} />;
   }
@@ -463,6 +533,195 @@ function renderBlock(b: Block, key: number, density: "regular" | "compact"): Rea
     >
       {renderInline(b.inline)}
     </p>
+  );
+}
+
+/* -------------------- Section cards (multi-topic responses) -------------------- */
+
+type SectionTone = "emerald" | "amber" | "rose" | "indigo" | "neutral";
+
+const SECTION_TONE_BAR: Record<SectionTone, string> = {
+  emerald: "bg-emerald-500",
+  amber: "bg-amber-500",
+  rose: "bg-rose-500",
+  indigo: "bg-indigo-500",
+  neutral: "bg-zinc-300",
+};
+
+const SECTION_TONE_BG: Record<SectionTone, string> = {
+  emerald: "bg-emerald-50/40",
+  amber: "bg-amber-50/40",
+  rose: "bg-rose-50/40",
+  indigo: "bg-indigo-50/40",
+  neutral: "bg-zinc-50/40",
+};
+
+const SECTION_TONE_BADGE: Record<SectionTone, "emerald" | "amber" | "rose" | "indigo" | "neutral"> = {
+  emerald: "emerald",
+  amber: "amber",
+  rose: "rose",
+  indigo: "indigo",
+  neutral: "neutral",
+};
+
+function inferTone(s: string): SectionTone {
+  const lower = s.toLowerCase();
+  if (/\b(off[- ]?track|miss(ed|ing)?|behind|red|critical|short|fail(ed|ing)?|below target)\b/.test(lower))
+    return "rose";
+  if (/\b(at[- ]?risk|trending (?:soft|down)|soft|caution|warning|slipping)\b/.test(lower)) return "amber";
+  if (/\b(on[- ]?track|nailed|hit|achieved|strong|on plan|ahead|exceeding)\b/.test(lower)) return "emerald";
+  return "neutral";
+}
+
+function parseSectionHeading(s: string): { title: string; status: string | null; tone: SectionTone } {
+  const sep = s.match(/^(.+?)\s+[—·–-]\s+(.+)$/);
+  if (sep) {
+    const title = sep[1].trim();
+    const status = sep[2].trim();
+    return { title, status, tone: inferTone(status) };
+  }
+  return { title: s, status: null, tone: "neutral" };
+}
+
+function SectionCard({
+  heading,
+  body,
+  density,
+}: {
+  heading: string;
+  body: Block[];
+  density: "regular" | "compact";
+}) {
+  const { title, status, tone } = parseSectionHeading(heading);
+  const compact = density === "compact";
+  return (
+    <div
+      className={cn(
+        "rounded-xl border divider overflow-hidden flex min-w-0",
+        compact ? "my-3" : "my-4"
+      )}
+    >
+      <div className={cn("w-1 shrink-0", SECTION_TONE_BAR[tone])} />
+      <div className="flex-1 min-w-0 bg-white">
+        <div
+          className={cn(
+            "px-4 sm:px-5 py-3 border-b divider flex items-center justify-between gap-3 flex-wrap",
+            SECTION_TONE_BG[tone]
+          )}
+        >
+          <div className="min-w-0 flex items-center gap-2">
+            <h2
+              className={cn(
+                "font-semibold tracking-tight text-zinc-900 break-words",
+                compact ? "text-[14px]" : "text-[15px]"
+              )}
+            >
+              {renderInline(title)}
+            </h2>
+          </div>
+          {status && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset shrink-0",
+                {
+                  "bg-zinc-100 text-zinc-700 ring-zinc-200/60": tone === "neutral",
+                  "bg-indigo-50 text-indigo-700 ring-indigo-200/60": tone === "indigo",
+                  "bg-emerald-50 text-emerald-700 ring-emerald-200/60": tone === "emerald",
+                  "bg-amber-50 text-amber-700 ring-amber-200/60": tone === "amber",
+                  "bg-rose-50 text-rose-700 ring-rose-200/60": tone === "rose",
+                }
+              )}
+            >
+              <span
+                className={cn("h-1.5 w-1.5 rounded-full", {
+                  "bg-zinc-400": tone === "neutral",
+                  "bg-indigo-500": tone === "indigo",
+                  "bg-emerald-500": tone === "emerald",
+                  "bg-amber-500": tone === "amber",
+                  "bg-rose-500": tone === "rose",
+                })}
+              />
+              {status}
+            </span>
+          )}
+          {/* Suppress unused variable warning — SECTION_TONE_BADGE used implicitly via inline classes */}
+          {SECTION_TONE_BADGE[tone] && null}
+        </div>
+        <div className="px-4 sm:px-5 py-3">
+          {body.map((b, i) => renderBlock(b, i, density))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- Callout (TL;DR / bottom-line-up-front) -------------------- */
+
+type CalloutTone = "positive" | "negative" | "warning" | "neutral";
+
+const CALLOUT_BG: Record<CalloutTone, string> = {
+  positive: "bg-emerald-50/60 border-emerald-300",
+  negative: "bg-rose-50/60 border-rose-300",
+  warning: "bg-amber-50/60 border-amber-300",
+  neutral: "bg-zinc-50/80 border-zinc-300",
+};
+
+const CALLOUT_LABEL_COLOR: Record<CalloutTone, string> = {
+  positive: "text-emerald-700",
+  negative: "text-rose-700",
+  warning: "text-amber-700",
+  neutral: "text-zinc-600",
+};
+
+function CalloutBlock({ raw, compact }: { raw: string; compact: boolean }) {
+  let parsed: { tone?: string; title?: string; body?: string; label?: string } | null = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return <FallbackBlock label="callout" raw={raw} compact={compact} />;
+  }
+  if (!parsed) return null;
+  const tone = (["positive", "negative", "warning", "neutral"].includes(parsed.tone || "")
+    ? parsed.tone
+    : "neutral") as CalloutTone;
+  const label = parsed.label || "Bottom line";
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border-l-4 px-4 sm:px-5 py-3.5 my-3 break-words",
+        CALLOUT_BG[tone]
+      )}
+    >
+      <div
+        className={cn(
+          "text-[10px] uppercase tracking-[0.14em] font-semibold mb-1",
+          CALLOUT_LABEL_COLOR[tone]
+        )}
+      >
+        {label}
+      </div>
+      {parsed.title && (
+        <div
+          className={cn(
+            "font-semibold text-zinc-900 leading-snug",
+            compact ? "text-[14.5px]" : "text-[16px]"
+          )}
+        >
+          {renderInline(parsed.title)}
+        </div>
+      )}
+      {parsed.body && (
+        <div
+          className={cn(
+            "mt-1 text-zinc-700 leading-relaxed",
+            compact ? "text-[12.5px]" : "text-[13px]"
+          )}
+        >
+          {renderInline(parsed.body)}
+        </div>
+      )}
+    </div>
   );
 }
 
