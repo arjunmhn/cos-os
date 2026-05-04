@@ -5,11 +5,12 @@ import { Card, CardEyebrow } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowUp,
   Bot,
+  ChevronDown,
   Code2,
   Cpu,
   Lock,
@@ -32,34 +33,47 @@ import { MarkdownContent } from "@/components/ui/markdown-view";
 
 type Turn = { role: "user" | "assistant"; body: string };
 
+type QABlock = {
+  id: string;
+  user: string;
+  assistant?: string;
+};
+
 const SUGGESTIONS: { label: string; prompt: string }[] = [
   {
     label: "Quarter at risk?",
-    prompt: "Walk me through what's at risk this quarter. Look across OKRs, pipeline coverage, hiring funnel, and recent decisions. Tell me the top 3 risks and what to do about each.",
+    prompt:
+      "Walk me through what's at risk this quarter. Look across OKRs, pipeline coverage, hiring funnel, and recent decisions. Tell me the top 3 risks and what to do about each.",
   },
   {
     label: "Top 3 priorities for next week",
-    prompt: "Based on the live OS state, what should be my top 3 priorities for next week as Chief of Staff? Be specific — name the OKR, deal, or hire each priority maps to.",
+    prompt:
+      "Based on the live OS state, what should be my top 3 priorities for next week as Chief of Staff? Be specific — name the OKR, deal, or hire each priority maps to.",
   },
   {
     label: "Pipeline health",
-    prompt: "Diagnose pipeline health. Use coverage ratio, segment mix, slipped deals, and ICP composition. What action would most improve the quarter forecast?",
+    prompt:
+      "Diagnose pipeline health. Use coverage ratio, segment mix, slipped deals, and ICP composition. What action would most improve the quarter forecast?",
   },
   {
     label: "Hiring funnel velocity",
-    prompt: "How is hiring velocity trending? Identify the slowest stage in the funnel and propose a fix. Reference candidate names and days-in-stage where relevant.",
+    prompt:
+      "How is hiring velocity trending? Identify the slowest stage in the funnel and propose a fix. Reference candidate names and days-in-stage where relevant.",
   },
   {
     label: "What changed in 30 days",
-    prompt: "Summarize what materially changed in the last 30 days across decisions, OKR status, deal movement, and KPI trends. What deserves the CEO's attention this week?",
+    prompt:
+      "Summarize what materially changed in the last 30 days across decisions, OKR status, deal movement, and KPI trends. What deserves the CEO's attention this week?",
   },
   {
     label: "OKR retrospective",
-    prompt: "Run a mid-quarter OKR retrospective. For each objective, name what's on track, what's at risk, and the specific action that would change the trajectory.",
+    prompt:
+      "Run a mid-quarter OKR retrospective. For each objective, name what's on track, what's at risk, and the specific action that would change the trajectory.",
   },
   {
     label: "Forecast the quarter",
-    prompt: "Forecast where we land this quarter on ARR, win rate, and headcount. Anchor on KPI trends and pipeline composition. State the assumptions you're making.",
+    prompt:
+      "Forecast where we land this quarter on ARR, win rate, and headcount. Anchor on KPI trends and pipeline composition. Use KPI tiles for headlines and a chart for the ARR trajectory + forecast. State the assumptions you're making.",
   },
 ];
 
@@ -79,14 +93,35 @@ export default function ChatPage() {
   const [prompt, setPrompt] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const transcriptEnd = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const remaining = Math.max(0, SESSION_LIMIT - usedCount);
   const limitReached = remaining <= 0;
 
-  useEffect(() => {
-    transcriptEnd.current?.scrollIntoView({ behavior: "smooth" });
-  }, [transcript, pending]);
+  const blocks = useMemo<QABlock[]>(() => {
+    const out: QABlock[] = [];
+    for (let i = 0; i < transcript.length; i++) {
+      if (transcript[i].role === "user") {
+        const user = transcript[i].body;
+        const next = transcript[i + 1];
+        const assistant = next?.role === "assistant" ? next.body : undefined;
+        out.push({ id: `b${i}`, user, assistant });
+        if (assistant) i++;
+      }
+    }
+    return out;
+  }, [transcript]);
+
+  const ordered = useMemo(() => [...blocks].reverse(), [blocks]);
+
+  const toggle = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const send = async (overridePrompt?: string) => {
     const text = (overridePrompt ?? prompt).trim();
@@ -98,7 +133,6 @@ export default function ChatPage() {
     setTranscript(next);
     setPrompt("");
 
-    // Slim KPI data for the prompt — drop the formatter function (not serializable)
     const kpis: KpiSnapshot[] = KPI_SERIES.map((k) => ({
       id: k.id,
       label: k.label,
@@ -136,6 +170,7 @@ export default function ChatPage() {
 
   const clear = () => {
     setTranscript([]);
+    setExpanded(new Set());
     setError(null);
   };
 
@@ -154,7 +189,7 @@ export default function ChatPage() {
 
       <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-5">
         <div className="space-y-5 min-w-0">
-          {/* COMPOSER (now at the top) */}
+          {/* COMPOSER */}
           <Card className="p-0 overflow-hidden">
             <div className="px-4 sm:px-5 py-3 border-b divider flex items-center justify-between gap-3 bg-zinc-50/40">
               <div className="min-w-0">
@@ -214,7 +249,7 @@ export default function ChatPage() {
                       onClick={() => send()}
                       disabled={limitReached || pending || !prompt.trim()}
                     >
-                      <span>{pending ? "Sending" : "Send"}</span>
+                      <span>{pending ? "Thinking" : "Ask"}</span>
                       <ArrowUp className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -231,9 +266,7 @@ export default function ChatPage() {
                 {SUGGESTIONS.map((s, i) => (
                   <button
                     key={i}
-                    onClick={() => {
-                      setPrompt(s.prompt);
-                    }}
+                    onClick={() => setPrompt(s.prompt)}
                     disabled={limitReached || pending}
                     className="rounded-full border divider bg-white px-3 py-1 text-[12px] text-zinc-700 hover:border-zinc-400 hover:bg-white hover:text-zinc-900 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50 max-w-full"
                   >
@@ -245,79 +278,63 @@ export default function ChatPage() {
             </div>
           </Card>
 
-          {/* TRANSCRIPT (below composer) */}
+          {/* TRANSCRIPT */}
           <Card className="p-0 overflow-hidden">
             <div className="px-4 sm:px-5 py-3 border-b divider flex items-center justify-between gap-3 bg-zinc-50/40">
               <CardEyebrow>Conversation</CardEyebrow>
-              <Badge tone="neutral" className="shrink-0">
-                {transcript.length === 0
-                  ? "No turns yet"
-                  : `${transcript.length} turn${transcript.length === 1 ? "" : "s"}`}
-              </Badge>
+              <div className="flex items-center gap-1.5">
+                <Badge tone="neutral" className="shrink-0">
+                  {blocks.length === 0
+                    ? "No questions yet"
+                    : `${blocks.length} question${blocks.length === 1 ? "" : "s"}`}
+                </Badge>
+                {blocks.length > 1 && (
+                  <span className="text-[10px] text-zinc-400 hidden sm:inline">
+                    newest first
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="divide-y divider">
-              {transcript.length === 0 ? (
-                <div className="px-6 py-12 text-center">
-                  <Sparkles className="h-5 w-5 text-zinc-300 mx-auto" />
-                  <div className="mt-3 text-[14px] font-semibold text-zinc-700">No conversation yet</div>
-                  <div className="mt-1 text-[12px] text-zinc-500 max-w-md mx-auto">
-                    Ask anything about your company. Answers come grounded in your live state with a forward-looking
-                    recommendation — not just a recap.
-                  </div>
-                  <div className="mt-4 flex items-center justify-center gap-1.5 flex-wrap text-[10.5px] text-zinc-400">
-                    <span className="font-mono">Visible to chat:</span>
-                    <Badge tone="neutral">{okrs.length} objectives</Badge>
-                    <Badge tone="neutral">{okrs.reduce((s, o) => s + o.keyResults.length, 0)} KRs</Badge>
-                    <Badge tone="neutral">{decisions.length} decisions</Badge>
-                    <Badge tone="neutral">{roles.length} roles</Badge>
-                    <Badge tone="neutral">{candidates.length} candidates</Badge>
-                    <Badge tone="neutral">{deals.length} deals</Badge>
-                    <Badge tone="neutral">{KPI_SERIES.length} KPI series</Badge>
-                  </div>
+            {blocks.length === 0 ? (
+              <div className="px-6 py-12 text-center">
+                <Sparkles className="h-5 w-5 text-zinc-300 mx-auto" />
+                <div className="mt-3 text-[14px] font-semibold text-zinc-700">No conversation yet</div>
+                <div className="mt-1 text-[12px] text-zinc-500 max-w-md mx-auto">
+                  Ask anything about your company. Answers come grounded in your live state with a forward-looking
+                  recommendation — not just a recap.
                 </div>
-              ) : (
-                transcript.map((t, i) => (
-                  <div
-                    key={i}
-                    className={cn("px-4 sm:px-6 py-5", t.role === "user" ? "bg-zinc-50/40" : "bg-white")}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={cn(
-                          "h-7 w-7 rounded-md grid place-items-center shrink-0 text-white",
-                          t.role === "user" ? "bg-zinc-900" : "bg-gradient-brand"
-                        )}
-                      >
-                        {t.role === "user" ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[10.5px] uppercase tracking-[0.12em] font-semibold text-zinc-500 mb-1.5">
-                          {t.role === "user" ? "You" : "Chief of Staff OS"}
-                        </div>
-                        <MarkdownContent body={t.body} density="compact" />
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-              {pending && (
-                <div className="px-4 sm:px-6 py-5">
-                  <div className="flex items-start gap-3">
-                    <div className="h-7 w-7 rounded-md grid place-items-center shrink-0 bg-gradient-brand text-white">
-                      <Bot className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="text-[13px] text-zinc-500 inline-flex items-center gap-1.5 min-w-0">
-                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse shrink-0" />
-                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse [animation-delay:120ms] shrink-0" />
-                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse [animation-delay:240ms] shrink-0" />
-                      <span className="ml-1 truncate">Reading your OS state…</span>
-                    </div>
-                  </div>
+                <div className="mt-4 flex items-center justify-center gap-1.5 flex-wrap text-[10.5px] text-zinc-400">
+                  <span className="font-mono">Visible to chat:</span>
+                  <Badge tone="neutral">{okrs.length} objectives</Badge>
+                  <Badge tone="neutral">{okrs.reduce((s, o) => s + o.keyResults.length, 0)} KRs</Badge>
+                  <Badge tone="neutral">{decisions.length} decisions</Badge>
+                  <Badge tone="neutral">{roles.length} roles</Badge>
+                  <Badge tone="neutral">{candidates.length} candidates</Badge>
+                  <Badge tone="neutral">{deals.length} deals</Badge>
+                  <Badge tone="neutral">{KPI_SERIES.length} KPI series</Badge>
                 </div>
-              )}
-              <div ref={transcriptEnd} />
-            </div>
+              </div>
+            ) : (
+              <div className="divide-y divider">
+                {ordered.map((b, i) => {
+                  const isNewest = i === 0;
+                  const isOpen = isNewest || expanded.has(b.id);
+                  const isPending = isNewest && pending && !b.assistant;
+                  return (
+                    <QACard
+                      key={b.id}
+                      block={b}
+                      isNewest={isNewest}
+                      isOpen={isOpen}
+                      isPending={isPending}
+                      indexFromNewest={i}
+                      onToggle={() => toggle(b.id)}
+                    />
+                  );
+                })}
+              </div>
+            )}
 
             {error && (
               <div className="px-4 sm:px-6 py-3 border-t divider bg-rose-50 text-[12.5px] text-rose-800 flex items-start gap-2">
@@ -363,10 +380,9 @@ export default function ChatPage() {
               <li className="flex items-start gap-2.5">
                 <Lock className="h-4 w-4 text-fuchsia-500 mt-0.5 shrink-0" />
                 <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-zinc-900">Rate-limited demo</div>
+                  <div className="text-[13px] font-semibold text-zinc-900">CEO-readable output</div>
                   <div className="text-[11.5px] text-zinc-500 leading-relaxed break-words">
-                    8 messages per browser, Sonnet 4.6, max-tokens capped at 2048. Edit your OKRs / deals to see
-                    answers shift.
+                    Renders KPI tiles, charts, and tables when the data benefits from visualization.
                   </div>
                 </div>
               </li>
@@ -393,3 +409,88 @@ export default function ChatPage() {
   );
 }
 
+function QACard({
+  block,
+  isNewest,
+  isOpen,
+  isPending,
+  indexFromNewest,
+  onToggle,
+}: {
+  block: QABlock;
+  isNewest: boolean;
+  isOpen: boolean;
+  isPending: boolean;
+  indexFromNewest: number;
+  onToggle: () => void;
+}) {
+  return (
+    <div className={cn("px-4 sm:px-6 py-5", isNewest ? "bg-white" : "bg-zinc-50/30")}>
+      <div className="flex items-start gap-3">
+        <div className="h-7 w-7 rounded-md grid place-items-center shrink-0 bg-zinc-900 text-white">
+          <User className="h-3.5 w-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="text-[10.5px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
+                {isNewest ? "Latest question" : `Question · ${indexFromNewest} ago`}
+              </div>
+              {isNewest && (
+                <Badge tone="indigo" dot>
+                  now
+                </Badge>
+              )}
+            </div>
+            {!isNewest && (
+              <button
+                onClick={onToggle}
+                className="text-[11px] text-zinc-500 hover:text-zinc-900 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md hover:bg-zinc-100 transition-colors"
+                aria-label={isOpen ? "Collapse answer" : "Expand answer"}
+                aria-expanded={isOpen}
+              >
+                {isOpen ? "Collapse" : "Expand"}
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")}
+                />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={() => !isOpen && onToggle()}
+            className={cn(
+              "block w-full text-left text-[14px] text-zinc-900 font-medium leading-snug break-words",
+              !isOpen && "line-clamp-2 cursor-pointer hover:text-zinc-700"
+            )}
+            disabled={isOpen}
+          >
+            {block.user}
+          </button>
+
+          {isOpen && (
+            <div className="mt-4 pt-4 border-t divider">
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className="h-6 w-6 rounded-md grid place-items-center bg-gradient-brand text-white shrink-0">
+                  <Bot className="h-3 w-3" />
+                </div>
+                <div className="text-[10.5px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
+                  Chief of Staff OS
+                </div>
+              </div>
+              {block.assistant && <MarkdownContent body={block.assistant} density="compact" />}
+              {isPending && (
+                <div className="flex items-center gap-1.5 text-[13px] text-zinc-500">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse [animation-delay:120ms]" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse [animation-delay:240ms]" />
+                  <span className="ml-1">Reading your OS state…</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
