@@ -12,20 +12,104 @@ import {
 } from "@/components/providers/company-profile-provider";
 import type { CompanyProfile } from "@/lib/types";
 import { useState } from "react";
-import { Save, RotateCcw, Building2, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  Building2,
+  Check,
+  RotateCcw,
+  Save,
+  Sparkles,
+  Wand2,
+  X,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type AdaptResult = {
+  profile: {
+    name: string;
+    stage: CompanyProfile["stage"];
+    hq: string;
+    teamSize: number;
+    founded: string;
+    oneLiner: string;
+    northStarMetric: string;
+    fiscalYearStart: number;
+  };
+  context: {
+    sector: string;
+    strategicMoment: string;
+    keyHires: string[];
+    suggestedOkrThemes: string[];
+    ceoName: string;
+  };
+};
 
 export default function ProfilePage() {
   const { profile, setProfile, hydrated } = useCompanyProfile();
   const [draft, setDraft] = useState<CompanyProfile>(profile);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
+  // Adapt state
+  const [source, setSource] = useState("");
+  const [adapting, setAdapting] = useState(false);
+  const [adaptError, setAdaptError] = useState<string | null>(null);
+  const [adaptResult, setAdaptResult] = useState<AdaptResult | null>(null);
+
   if (!hydrated) {
-    return (
-      <div className="text-sm text-zinc-400">Loading profile…</div>
-    );
+    return <div className="text-sm text-zinc-400">Loading profile…</div>;
   }
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(profile);
+
+  const adapt = async () => {
+    const text = source.trim();
+    if (!text || adapting) return;
+    setAdaptError(null);
+    setAdaptResult(null);
+    setAdapting(true);
+    try {
+      const res = await fetch("/api/adapt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: text }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAdaptError(data.error || "Adaptation failed.");
+      } else {
+        setAdaptResult({ profile: data.profile, context: data.context });
+      }
+    } catch {
+      setAdaptError("Network error. Try again.");
+    } finally {
+      setAdapting(false);
+    }
+  };
+
+  const applyAdapt = () => {
+    if (!adaptResult) return;
+    const newProfile: CompanyProfile = {
+      ...draft,
+      name: adaptResult.profile.name,
+      stage: adaptResult.profile.stage,
+      hq: adaptResult.profile.hq,
+      teamSize: adaptResult.profile.teamSize,
+      founded: adaptResult.profile.founded,
+      oneLiner: adaptResult.profile.oneLiner,
+      northStarMetric: adaptResult.profile.northStarMetric,
+      fiscalYearStart: adaptResult.profile.fiscalYearStart,
+      ceoName: adaptResult.context.ceoName || draft.ceoName,
+    };
+    setDraft(newProfile);
+    setProfile(newProfile);
+    setSavedAt(Date.now());
+    setAdaptResult(null);
+    setSource("");
+  };
+
+  const discardAdapt = () => {
+    setAdaptResult(null);
+  };
 
   return (
     <div className="space-y-8">
@@ -62,6 +146,80 @@ export default function ProfilePage() {
           <Sparkles className="h-3.5 w-3.5" /> Saved. The shell, the dashboard, and every template just updated.
         </div>
       )}
+
+      {/* ADAPT TO A COMPANY */}
+      <Card className="p-0 overflow-hidden bg-gradient-to-br from-white via-white to-indigo-50/30 border-indigo-100/60">
+        <div className="px-5 py-4 border-b divider flex items-center gap-3">
+          <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-brand text-white shadow-elevated shrink-0">
+            <Wand2 className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <CardEyebrow className="text-indigo-600">Adapt to a company</CardEyebrow>
+            <h3 className="mt-0.5 text-[15px] font-semibold tracking-tight text-zinc-900">
+              Reframe the OS around a specific company in one shot
+            </h3>
+          </div>
+        </div>
+
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-[12.5px] text-zinc-600 leading-relaxed">
+            Paste a job description, careers page, or just a company name. The OS infers profile, stage, sector,
+            strategic moment, key hires, and likely OKR themes — then propagates that company everywhere.
+          </p>
+
+          <Textarea
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            placeholder="e.g. Paste the JD you're applying to. Or just type a company name like 'Linear' or 'Ramp'."
+            rows={5}
+            className="font-mono text-[12px]"
+            disabled={adapting}
+          />
+
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-[11px] text-zinc-400">
+              {source.length > 0 && (
+                <span>
+                  {source.length.toLocaleString()} chars · {source.split(/\s+/).filter(Boolean).length}{" "}
+                  words
+                </span>
+              )}
+            </div>
+            <Button
+              variant="gradient"
+              onClick={adapt}
+              disabled={adapting || source.trim().length < 3}
+            >
+              {adapting ? (
+                <>
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/80 animate-pulse" />
+                  <span>Adapting…</span>
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-3.5 w-3.5" /> Adapt the OS
+                </>
+              )}
+            </Button>
+          </div>
+
+          {adaptError && (
+            <div className="rounded-lg bg-rose-50 border border-rose-200 px-4 py-3 text-[12.5px] text-rose-800 flex items-start gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span className="min-w-0 break-words">{adaptError}</span>
+            </div>
+          )}
+        </div>
+
+        {adaptResult && (
+          <AdaptPreview
+            result={adaptResult}
+            currentProfile={profile}
+            onApply={applyAdapt}
+            onDiscard={discardAdapt}
+          />
+        )}
+      </Card>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-6">
@@ -197,6 +355,185 @@ function PreviewTile({ label, value }: { label: string; value: string }) {
       <Badge tone="indigo" className="mt-2">
         Live preview
       </Badge>
+    </div>
+  );
+}
+
+function AdaptPreview({
+  result,
+  currentProfile,
+  onApply,
+  onDiscard,
+}: {
+  result: AdaptResult;
+  currentProfile: CompanyProfile;
+  onApply: () => void;
+  onDiscard: () => void;
+}) {
+  return (
+    <div className="border-t divider bg-white">
+      <div className="px-5 py-4 border-b divider bg-indigo-50/40 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-indigo-600" />
+          <span className="text-[13px] font-semibold text-zinc-900">
+            Adapted to{" "}
+            <span className="text-indigo-700">{result.profile.name || "this company"}</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button variant="ghost" size="sm" onClick={onDiscard}>
+            <X className="h-3 w-3" /> Discard
+          </Button>
+          <Button variant="primary" size="sm" onClick={onApply}>
+            <Check className="h-3 w-3" /> Apply changes
+          </Button>
+        </div>
+      </div>
+
+      <div className="px-5 py-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5">
+        {/* Profile diff */}
+        <div className="space-y-2.5 min-w-0">
+          <div className="text-[10.5px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
+            Profile changes
+          </div>
+          <DiffRow label="Name" oldValue={currentProfile.name} newValue={result.profile.name} />
+          <DiffRow
+            label="Stage"
+            oldValue={currentProfile.stage}
+            newValue={result.profile.stage}
+          />
+          <DiffRow label="HQ" oldValue={currentProfile.hq} newValue={result.profile.hq} />
+          <DiffRow
+            label="Team size"
+            oldValue={String(currentProfile.teamSize)}
+            newValue={String(result.profile.teamSize)}
+          />
+          <DiffRow
+            label="Founded"
+            oldValue={currentProfile.founded}
+            newValue={result.profile.founded}
+          />
+          <DiffRow
+            label="One-liner"
+            oldValue={currentProfile.oneLiner}
+            newValue={result.profile.oneLiner}
+          />
+          <DiffRow
+            label="North-star metric"
+            oldValue={currentProfile.northStarMetric}
+            newValue={result.profile.northStarMetric}
+          />
+          {result.context.ceoName && (
+            <DiffRow
+              label="CEO"
+              oldValue={currentProfile.ceoName}
+              newValue={result.context.ceoName}
+            />
+          )}
+        </div>
+
+        {/* Context */}
+        <div className="space-y-3 min-w-0">
+          <div className="text-[10.5px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
+            Strategic context (read-only)
+          </div>
+
+          {result.context.sector && (
+            <div className="rounded-lg border divider px-3.5 py-2.5 bg-zinc-50/60">
+              <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-zinc-500">
+                Sector
+              </div>
+              <div className="mt-0.5 text-[13px] text-zinc-800 break-words">
+                {result.context.sector}
+              </div>
+            </div>
+          )}
+
+          {result.context.strategicMoment && (
+            <div className="rounded-lg border divider px-3.5 py-2.5 bg-zinc-50/60">
+              <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-zinc-500">
+                Strategic moment
+              </div>
+              <div className="mt-0.5 text-[13px] text-zinc-800 leading-relaxed break-words">
+                {result.context.strategicMoment}
+              </div>
+            </div>
+          )}
+
+          {result.context.keyHires.length > 0 && (
+            <div className="rounded-lg border divider px-3.5 py-2.5 bg-zinc-50/60">
+              <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-zinc-500">
+                Key hires this stage
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {result.context.keyHires.map((h, i) => (
+                  <Badge key={i} tone="indigo">
+                    {h}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {result.context.suggestedOkrThemes.length > 0 && (
+            <div className="rounded-lg border divider px-3.5 py-2.5 bg-zinc-50/60">
+              <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-zinc-500">
+                Likely OKR themes
+              </div>
+              <div className="mt-1.5 flex flex-col gap-1">
+                {result.context.suggestedOkrThemes.map((t, i) => (
+                  <div
+                    key={i}
+                    className="text-[12.5px] text-zinc-700 leading-relaxed flex items-start gap-1.5"
+                  >
+                    <span className="mt-1.5 h-1 w-1 rounded-full bg-zinc-400 shrink-0" />
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiffRow({
+  label,
+  oldValue,
+  newValue,
+}: {
+  label: string;
+  oldValue: string;
+  newValue: string;
+}) {
+  const changed = oldValue.trim() !== newValue.trim();
+  return (
+    <div className="rounded-lg border divider px-3.5 py-2.5 min-w-0">
+      <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-zinc-500 mb-1">
+        {label}
+      </div>
+      <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 min-w-0">
+        <div
+          className={cn(
+            "text-[12.5px] line-through min-w-0 break-words",
+            changed ? "text-zinc-400" : "hidden sm:block text-zinc-400 line-through-0"
+          )}
+          style={!changed ? { textDecoration: "none" } : undefined}
+        >
+          {oldValue || "—"}
+        </div>
+        {changed && <span className="text-zinc-300 shrink-0">→</span>}
+        <div
+          className={cn(
+            "text-[13px] min-w-0 break-words",
+            changed ? "text-zinc-900 font-medium" : "text-zinc-500"
+          )}
+        >
+          {newValue || "—"}
+        </div>
+      </div>
     </div>
   );
 }
