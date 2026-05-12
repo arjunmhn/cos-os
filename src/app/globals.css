@@ -137,3 +137,68 @@ body {
   color: var(--color-fg-muted);
   box-shadow: 0 1px 0 0 var(--color-border);
 }
+
+/* ---------------------------------------------------------------------- */
+/* Print stylesheet                                                       */
+/* When the user prints (or Save as PDF) anything wrapped in              */
+/* .print-target, hide the rest of the page chrome and render the target  */
+/* full-width.                                                            */
+/* ---------------------------------------------------------------------- */
+
+@media print {
+  html,
+  body {
+    background: white !important;
+    background-image: none !important;
+  }
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  /* Hide everything not marked as print-content */
+  body :not(.print-root):not(.print-target):not(.print-target *) {
+    visibility: hidden;
+  }
+  .print-root {
+    visibility: visible !important;
+  }
+  .print-target {
+    visibility: visible !important;
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+  }
+  .print-target * {
+    visibility: visible !important;
+  }
+  /* Hide non-content chrome inside the target */
+  .print-hide,
+  .print-target .print-hide {
+    display: none !important;
+  }
+  /* Avoid awkward breaks inside cards/charts */
+  .print-target table,
+  .print-target pre,
+  .print-target blockquote,
+  .print-target h1,
+  .print-target h2,
+  .print-target h3 {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  /* Page margins */
+  @page {
+    margin: 0.6in;
+    size: letter;
+  }
+  /* Tighten link rendering: don't show URL after links in print */
+  a[href]::after {
+    content: "" !important;
+  }
+}

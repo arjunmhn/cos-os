@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Card } from "./card";
 import { Button } from "./button";
-import { Check, Copy, Download, Eye, FileCode2 } from "lucide-react";
+import { Check, Copy, Download, Eye, FileCode2, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Area,
@@ -145,9 +145,21 @@ export function MarkdownDocument({
     URL.revokeObjectURL(url);
   };
 
+  const printDoc = () => {
+    if (typeof window !== "undefined") {
+      // The print stylesheet (globals.css) hides everything not marked
+      // .print-target — flip view to Pretty so the rendered document prints.
+      setView("pretty");
+      // Wait one tick for the view to flip before triggering print.
+      setTimeout(() => window.print(), 50);
+    }
+  };
+
   return (
-    <Card className={cn("p-0 overflow-hidden flex flex-col min-w-0", className)}>
-      <div className="px-4 sm:px-5 py-3 border-b divider flex items-center justify-between gap-3 bg-zinc-50/40">
+    <Card
+      className={cn("p-0 overflow-hidden flex flex-col min-w-0 print-target", className)}
+    >
+      <div className="px-4 sm:px-5 py-3 border-b divider flex items-center justify-between gap-3 bg-zinc-50/40 print-hide">
         <div className="min-w-0">
           {eyebrow && (
             <div className="text-[10.5px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
@@ -160,7 +172,7 @@ export function MarkdownDocument({
             </h3>
           )}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           <div className="inline-flex items-center rounded-lg border divider bg-white p-0.5">
             <button
               onClick={() => setView("pretty")}
@@ -189,6 +201,9 @@ export function MarkdownDocument({
           </Button>
           <Button variant="outline" size="sm" onClick={download}>
             <Download className="h-3 w-3" /> .md
+          </Button>
+          <Button variant="outline" size="sm" onClick={printDoc} title="Print or save as PDF">
+            <Printer className="h-3 w-3" /> PDF
           </Button>
         </div>
       </div>
