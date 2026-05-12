@@ -17,7 +17,7 @@ import {
   type Candidate,
 } from "@/lib/content/people";
 import { DEFAULT_DEALS, type Deal } from "@/lib/content/gtm";
-import { KPI_SERIES } from "@/lib/content/board";
+import { DEFAULT_KPIS } from "@/lib/content/kpi-defaults";
 import type { Decision, Objective } from "@/lib/types";
 import type { KpiSnapshot } from "@/lib/cos-persona";
 import {
@@ -39,6 +39,7 @@ export default function PlanPage() {
   const [roles] = useLocalStorage<RoleMoc[]>("roles", DEFAULT_ROLES);
   const [candidates] = useLocalStorage<Candidate[]>("candidates", DEFAULT_CANDIDATES);
   const [deals] = useLocalStorage<Deal[]>("deals", DEFAULT_DEALS);
+  const [kpis] = useLocalStorage<KpiSnapshot[]>("kpis", DEFAULT_KPIS);
 
   const [plan, setPlan] = useLocalStorage<string>("plan-draft", "");
   const [extraContext, setExtraContext] = useState("");
@@ -50,16 +51,6 @@ export default function PlanPage() {
     if (generating) return;
     setError(null);
     setGenerating(true);
-
-    const kpis: KpiSnapshot[] = KPI_SERIES.map((k) => ({
-      id: k.id,
-      label: k.label,
-      unit: k.unit,
-      latest: k.data[k.data.length - 1].value,
-      prev: k.data[k.data.length - 2].value,
-      target: k.target,
-      series: k.data.map((d) => ({ month: d.month, value: d.value })),
-    }));
 
     try {
       const res = await fetch("/api/plan", {

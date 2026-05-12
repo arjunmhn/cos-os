@@ -26,7 +26,7 @@ import { useCompanyProfile } from "@/components/providers/company-profile-provid
 import { DEFAULT_OKRS, DEFAULT_DECISIONS } from "@/lib/content/cadence";
 import { DEFAULT_ROLES, DEFAULT_CANDIDATES, type RoleMoc, type Candidate } from "@/lib/content/people";
 import { DEFAULT_DEALS, type Deal } from "@/lib/content/gtm";
-import { KPI_SERIES } from "@/lib/content/board";
+import { DEFAULT_KPIS } from "@/lib/content/kpi-defaults";
 import type { Decision, Objective } from "@/lib/types";
 import type { KpiSnapshot } from "@/lib/cos-persona";
 import { MarkdownContent } from "@/components/ui/markdown-view";
@@ -86,6 +86,7 @@ export default function ChatPage() {
   const [roles] = useLocalStorage<RoleMoc[]>("roles", DEFAULT_ROLES);
   const [candidates] = useLocalStorage<Candidate[]>("candidates", DEFAULT_CANDIDATES);
   const [deals] = useLocalStorage<Deal[]>("deals", DEFAULT_DEALS);
+  const [kpis] = useLocalStorage<KpiSnapshot[]>("kpis", DEFAULT_KPIS);
 
   const [transcript, setTranscript] = useLocalStorage<Turn[]>("chat-transcript", []);
   const [usedCount, setUsedCount] = useLocalStorage<number>("chat-used-count", 0);
@@ -148,16 +149,6 @@ export default function ChatPage() {
     const next: Turn[] = [...transcript, { role: "user", body: text }];
     setTranscript(next);
     setPrompt("");
-
-    const kpis: KpiSnapshot[] = KPI_SERIES.map((k) => ({
-      id: k.id,
-      label: k.label,
-      unit: k.unit,
-      latest: k.data[k.data.length - 1].value,
-      prev: k.data[k.data.length - 2].value,
-      target: k.target,
-      series: k.data.map((d) => ({ month: d.month, value: d.value })),
-    }));
 
     try {
       const res = await fetch("/api/chat", {
@@ -328,7 +319,7 @@ export default function ChatPage() {
                   <Badge tone="neutral">{roles.length} roles</Badge>
                   <Badge tone="neutral">{candidates.length} candidates</Badge>
                   <Badge tone="neutral">{deals.length} deals</Badge>
-                  <Badge tone="neutral">{KPI_SERIES.length} KPI series</Badge>
+                  <Badge tone="neutral">{kpis.length} KPI series</Badge>
                 </div>
               </div>
             ) : (

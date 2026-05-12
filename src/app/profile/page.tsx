@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import type { RoleMoc, Candidate } from "@/lib/content/people";
 import type { Deal } from "@/lib/content/gtm";
 import { writeStorage } from "@/lib/storage";
+import { scaleKpisForProfile } from "@/lib/content/kpi-defaults";
 
 type AdaptResult = {
   profile: {
@@ -122,6 +123,9 @@ export default function ProfilePage() {
       writeStorage("roles", adaptResult.seed.roles);
       writeStorage("decisions", adaptResult.seed.decisions);
     }
+
+    // Scale KPI series to the new profile (stage + team size + north-star label)
+    writeStorage("kpis", scaleKpisForProfile(newProfile));
 
     setSavedAt(Date.now());
     setAdaptResult(null);
