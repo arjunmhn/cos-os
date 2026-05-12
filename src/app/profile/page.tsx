@@ -214,7 +214,7 @@ export default function ProfilePage() {
               {adapting ? (
                 <>
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-white/80 animate-pulse" />
-                  <span>Adapting…</span>
+                  <span>Adapting · 30–60s</span>
                 </>
               ) : (
                 <>
@@ -223,6 +223,13 @@ export default function ProfilePage() {
               )}
             </Button>
           </div>
+
+          {adapting && (
+            <div className="rounded-lg bg-indigo-50/60 border border-indigo-200/60 px-4 py-3 text-[12.5px] text-indigo-900 leading-relaxed">
+              Generating profile, sector, strategic moment, OKRs, deals, candidates, roles, and decisions
+              for this company. Takes 30–60 seconds — the model produces ~4k tokens of company-specific content.
+            </div>
+          )}
 
           {adaptError && (
             <div className="rounded-lg bg-rose-50 border border-rose-200 px-4 py-3 text-[12.5px] text-rose-800 flex items-start gap-2">
