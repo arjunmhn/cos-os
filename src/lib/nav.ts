@@ -4,6 +4,8 @@ import {
   Building2,
   CalendarClock,
   Database,
+  FileText,
+  Info,
   LayoutDashboard,
   MessagesSquare,
   Presentation,
@@ -32,6 +34,13 @@ export const NAV: NavItem[] = [
     label: "Ask the OS",
     description: "Query your state, get forward-looking advice",
     icon: MessagesSquare,
+    group: "Daily",
+  },
+  {
+    href: "/plan",
+    label: "30-Day Plan",
+    description: "Generate a pre-read for your next application",
+    icon: FileText,
     group: "Daily",
   },
   {
@@ -81,6 +90,13 @@ export const NAV: NavItem[] = [
     label: "Company Profile",
     description: "Your company's settings",
     icon: Building2,
+    group: "System",
+  },
+  {
+    href: "/about",
+    label: "About",
+    description: "Who built this and why",
+    icon: Info,
     group: "System",
   },
 ];
