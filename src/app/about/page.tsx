@@ -3,7 +3,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowRight,
-  BookOpen,
   Briefcase,
   Building2,
   CalendarClock,
@@ -32,8 +31,7 @@ const MODULES = [
   { href: "/board", label: "Board & IR", body: "KPI charts, board pack, investor update.", icon: Presentation },
   { href: "/people", label: "People & Hiring", body: "MOC builder, pipeline kanban, Day-90 review.", icon: Users },
   { href: "/gtm", label: "GTM & Sales Ops", body: "Pipeline coverage, retrostudy, velocity.", icon: Target },
-  { href: "/library", label: "Library", body: "Principles and frameworks this OS encodes.", icon: BookOpen },
-  { href: "/import", label: "Import", body: "CSV import for any module.", icon: Database },
+  { href: "/import", label: "Data sources", body: "CSV today; HubSpot, Slack, Notion next.", icon: Database },
   { href: "/profile", label: "Company Profile", body: "Adapt to your company in 45 seconds.", icon: Building2 },
 ];
 

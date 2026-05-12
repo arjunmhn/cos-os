@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  BookOpen,
   Building2,
   CalendarClock,
   Database,
@@ -72,16 +71,9 @@ export const NAV: NavItem[] = [
     group: "Modules",
   },
   {
-    href: "/library",
-    label: "Library",
-    description: "The principles this OS is built on",
-    icon: BookOpen,
-    group: "System",
-  },
-  {
     href: "/import",
-    label: "Import data",
-    description: "CSV import for any module",
+    label: "Data sources",
+    description: "CSV + planned integrations",
     icon: Database,
     group: "System",
   },

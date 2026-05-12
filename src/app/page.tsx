@@ -255,11 +255,8 @@ export default function CommandCenter() {
             {principleOfDay.title}
           </h3>
           <p className="mt-3 text-[13px] text-zinc-600 leading-relaxed">{principleOfDay.body}</p>
-          <div className="mt-4 pt-3 border-t border-indigo-100 text-[11px] text-zinc-500 flex items-center justify-between">
-            <span>{principleOfDay.source}</span>
-            <Link href="/library" className="text-indigo-700 hover:underline inline-flex items-center gap-1">
-              All principles <ChevronRight className="h-3 w-3" />
-            </Link>
+          <div className="mt-4 pt-3 border-t border-indigo-100 text-[11px] text-zinc-500">
+            {principleOfDay.source}
           </div>
         </Card>
       </section>

@@ -7,7 +7,6 @@ import { useLocalStorage } from "@/lib/storage";
 import { DEFAULT_OKRS, DEFAULT_DECISIONS } from "@/lib/content/cadence";
 import { DEFAULT_ROLES, DEFAULT_CANDIDATES, type RoleMoc, type Candidate } from "@/lib/content/people";
 import { DEFAULT_DEALS, SEGMENT_LABEL, STAGE_LABEL, type Deal } from "@/lib/content/gtm";
-import { PRINCIPLES } from "@/lib/content/principles";
 import type { Decision, Objective } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -22,7 +21,6 @@ import {
   Presentation,
   ScrollText,
   Search,
-  Sparkles,
   Target,
   TrendingUp,
   User,
@@ -116,14 +114,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       icon: TrendingUp,
       href: "/gtm",
     }));
-    const principleItems: SearchItem[] = PRINCIPLES.map((p) => ({
-      id: `prin-${p.id}`,
-      group: "Principles",
-      label: p.title,
-      sublabel: p.source,
-      icon: Sparkles,
-      href: "/library",
-    }));
     return [
       ...navItems,
       ...okrItems,
@@ -131,7 +121,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       ...roleItems,
       ...candidateItems,
       ...dealItems,
-      ...principleItems,
     ];
   }, [okrs, decisions, roles, candidates, deals]);
 
