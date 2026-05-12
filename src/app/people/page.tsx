@@ -23,7 +23,7 @@ export default function PeoplePage() {
       <PageHeader
         eyebrow="People & Hiring"
         title="A hiring rubric anyone can run."
-        description="Define the role by outcomes, not titles. Track the pipeline with the only metric that matters at onsite — time-to-decision. End every hire with a written Day-90. The rubric is the same artifact, four times."
+        description="MOC role specs, hiring pipeline, written Day-90 reviews."
       />
 
       <div className="flex items-center gap-1 border-b divider overflow-x-auto scroll-dim">

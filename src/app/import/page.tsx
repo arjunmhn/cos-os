@@ -99,7 +99,7 @@ export default function ImportPage() {
       <PageHeader
         eyebrow="Data import"
         title="Bring your own data."
-        description="Paste a CSV or drop a file. The OS auto-detects columns, previews the mapping, and writes to localStorage. Anything you import lights up the relevant module immediately."
+        description="Paste a CSV or upload a file. Headers auto-detect; data writes to the matching module."
       />
 
       {imported && (

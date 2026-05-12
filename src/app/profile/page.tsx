@@ -141,7 +141,7 @@ export default function ProfilePage() {
       <PageHeader
         eyebrow="Company Profile"
         title="Tell the OS about your company."
-        description="These fields propagate through every template, dashboard, and meeting kit. Stored locally in your browser — nothing is sent anywhere."
+        description="These propagate everywhere. Stored in your browser."
         actions={
           <>
             <Button

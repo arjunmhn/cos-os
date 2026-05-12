@@ -4,6 +4,7 @@ import { useCompanyProfile, STAGE_LABELS } from "@/components/providers/company-
 import { initials } from "@/lib/utils";
 import { Menu, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { TourTrigger } from "@/components/tour/tour-trigger";
 
 export function Topbar({
   onOpenDrawer,
@@ -60,6 +61,8 @@ export function Topbar({
         >
           <Search className="h-4 w-4" />
         </button>
+
+        <TourTrigger />
 
         <Link
           href="/chat"

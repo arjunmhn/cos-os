@@ -35,7 +35,7 @@ export default function CadencePage() {
       <PageHeader
         eyebrow="Cadence & OKRs"
         title="The rhythms that make the CEO never have to ask."
-        description="A leading-indicator dashboard, a meeting kit per cadence, an OKR tracker that updates weekly, and a decision log that survives the meeting it was made in. The four artifacts that carry the operating system."
+        description="Quarter calendar, meeting kits, OKRs, decision log."
         actions={
           <Button variant="outline">
             <Calendar className="h-3.5 w-3.5" /> Sync to calendar

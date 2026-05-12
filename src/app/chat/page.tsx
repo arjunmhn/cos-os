@@ -11,13 +11,10 @@ import {
   ArrowUp,
   Bot,
   ChevronDown,
-  Code2,
   Cpu,
-  Lock,
   Sparkles,
   Trash2,
   User,
-  Wrench,
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -186,7 +183,7 @@ export default function ChatPage() {
       <PageHeader
         eyebrow="Ask the OS"
         title="Query your company. Backward, current, and forward."
-        description="Natural-language analyst over your live OS state. Ask about a metric, a deal, a hire, or what to do this week — answers come grounded in your data with a recommendation, not just a recap."
+        description="Natural-language analyst over your live OS state."
         actions={
           <Badge tone={limitReached ? "rose" : remaining <= 2 ? "amber" : "indigo"} dot>
             {remaining}/{SESSION_LIMIT} remaining
@@ -364,50 +361,9 @@ export default function ChatPage() {
         {/* SIDE PANEL */}
         <div className="space-y-4 min-w-0">
           <Card className="p-5">
-            <CardEyebrow>How it works</CardEyebrow>
-            <ul className="mt-3 space-y-3">
-              <li className="flex items-start gap-2.5">
-                <Wrench className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-zinc-900">Two halves to every answer</div>
-                  <div className="text-[11.5px] text-zinc-500 leading-relaxed break-words">
-                    Observation grounded in your data, then a forward-looking recommendation.
-                  </div>
-                </div>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <Code2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-zinc-900">Reads your live state</div>
-                  <div className="text-[11.5px] text-zinc-500 leading-relaxed break-words">
-                    Profile, OKRs, decisions, roles, candidates, deals, and 12 months of KPI trends.
-                  </div>
-                </div>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <Lock className="h-4 w-4 text-fuchsia-500 mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-zinc-900">CEO-readable output</div>
-                  <div className="text-[11.5px] text-zinc-500 leading-relaxed break-words">
-                    Renders KPI tiles, charts, and tables when the data benefits from visualization.
-                  </div>
-                </div>
-              </li>
-            </ul>
-          </Card>
-
-          <Card className="p-5">
-            <CardEyebrow>Self-host</CardEyebrow>
-            <p className="mt-3 text-[12px] text-zinc-600 leading-relaxed break-words">
-              Fork the repo, set{" "}
-              <code className="font-mono text-[10.5px] bg-zinc-100 rounded px-1 break-all">
-                ANTHROPIC_API_KEY
-              </code>{" "}
-              locally, and run{" "}
-              <code className="font-mono text-[10.5px] bg-zinc-100 rounded px-1 break-all">
-                npm run dev
-              </code>
-              . Outputs persist in your browser&apos;s localStorage — nothing else leaves your machine.
+            <CardEyebrow>What it reads</CardEyebrow>
+            <p className="mt-2 text-[12px] text-zinc-600 leading-relaxed break-words">
+              Your profile, OKRs, decisions, roles, candidates, deals, and 12 months of KPI trends — on every prompt.
             </p>
           </Card>
         </div>

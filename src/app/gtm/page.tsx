@@ -27,7 +27,7 @@ export default function GtmPage() {
       <PageHeader
         eyebrow="GTM & Sales Ops"
         title="Catch the quarter miss six weeks early."
-        description="Pipeline coverage as a leading indicator. Deal-by-deal mid-quarter inspection. Per-customer retrostudy artifacts Sales pulls into proposals. Repeatability over heroics."
+        description="Coverage, mid-quarter inspection, retrostudy, velocity, win/loss."
       />
 
       <div className="flex items-center gap-1 border-b divider overflow-x-auto scroll-dim">

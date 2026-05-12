@@ -12,7 +12,7 @@ export default function LibraryPage() {
       <PageHeader
         eyebrow="Library"
         title="The principles this OS is built on."
-        description="Every template, dashboard, and rule of thumb in this system traces back to a small set of opinions about how a Chief of Staff should operate. They're collected here so a future hire can read the why before reading the what."
+        description="The principles, frameworks, and source materials this OS encodes."
       />
 
       {/* Principles grid */}
@@ -55,7 +55,7 @@ export default function LibraryPage() {
           icon={Users2}
           eyebrow="Stage-aware"
           title="Three Chief of Staff archetypes"
-          description="The role that lands depends on the company's stage. This OS is built for the Strategic CoS shape, but every module is written so the Builder and Exec-Support shapes can extract the parts that fit."
+          description="The shape of the role depends on stage. This OS leans into the Strategic CoS archetype."
         />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {ARCHETYPES.map((a, i) => (

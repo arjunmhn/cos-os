@@ -27,7 +27,7 @@ export default function BoardPage() {
       <PageHeader
         eyebrow="Board & IR"
         title="Board prep is a 2-week project, not a panic."
-        description="Same six sections every quarter. Investor updates ship monthly — same metrics, brief commentary, asks. Even months with no news. The data room stays fresh between rounds, not after them."
+        description="Board pack, investor update, KPI charts, prep timeline, data room."
       />
 
       <div className="flex items-center gap-1 border-b divider overflow-x-auto scroll-dim">

@@ -2,7 +2,6 @@
 
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardEyebrow } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { MarkdownDocument } from "@/components/ui/markdown-view";
@@ -85,7 +84,7 @@ export default function PlanPage() {
       <PageHeader
         eyebrow="30-Day Plan"
         title="A pre-read deliverable for your next CoS application."
-        description="Generate a polished, opinionated first-30-days plan tied to the live OS state. Sized for a busy founder to skim in 90 seconds. Copy as markdown or download as .md to attach to applications."
+        description="A polished first-30-days plan from your live OS state. Copy, download, or save as PDF."
         actions={
           plan ? (
             <Button variant="outline" onClick={generate} disabled={generating}>
@@ -196,46 +195,39 @@ export default function PlanPage() {
       {!plan && !generating && (
         <Card className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div>
-              <div className="grid h-8 w-8 place-items-center rounded-md bg-indigo-50 text-indigo-700 mb-2">
-                <ClipboardCheck className="h-4 w-4" />
+            <div className="flex items-start gap-3">
+              <div className="grid h-7 w-7 place-items-center rounded-md bg-indigo-50 text-indigo-700 shrink-0">
+                <ClipboardCheck className="h-3.5 w-3.5" />
               </div>
-              <div className="text-[13px] font-semibold text-zinc-900">Adapt first</div>
-              <p className="mt-1 text-[12px] text-zinc-500 leading-relaxed">
-                Run <span className="font-mono">/profile</span> &rarr; Adapt with the target company&apos;s
-                JD. The plan then anchors in *their* OKRs and deals, not the generic sample data.
-              </p>
-            </div>
-            <div>
-              <div className="grid h-8 w-8 place-items-center rounded-md bg-fuchsia-50 text-fuchsia-700 mb-2">
-                <Wand2 className="h-4 w-4" />
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-zinc-900">1. Adapt first</div>
+                <p className="mt-0.5 text-[12px] text-zinc-500 leading-relaxed">
+                  Run Adapt on <span className="font-mono">/profile</span> with the target JD.
+                </p>
               </div>
-              <div className="text-[13px] font-semibold text-zinc-900">Generate the plan</div>
-              <p className="mt-1 text-[12px] text-zinc-500 leading-relaxed">
-                One click. The model reads your full OS state and produces a Week 1 / Week 2 /
-                Weeks 3–4 / Day 30 deliverables / Watch-outs structure.
-              </p>
             </div>
-            <div>
-              <div className="grid h-8 w-8 place-items-center rounded-md bg-emerald-50 text-emerald-700 mb-2">
-                <Calendar className="h-4 w-4" />
+            <div className="flex items-start gap-3">
+              <div className="grid h-7 w-7 place-items-center rounded-md bg-fuchsia-50 text-fuchsia-700 shrink-0">
+                <Wand2 className="h-3.5 w-3.5" />
               </div>
-              <div className="text-[13px] font-semibold text-zinc-900">Attach to applications</div>
-              <p className="mt-1 text-[12px] text-zinc-500 leading-relaxed">
-                Copy as markdown or download .md. Use it as a pre-read for the next interview, or attach
-                to your application as a deliverable that proves you&apos;ve done the work.
-              </p>
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-zinc-900">2. Generate</div>
+                <p className="mt-0.5 text-[12px] text-zinc-500 leading-relaxed">
+                  One click. Week 1 → Day 30 structure, anchored in your state.
+                </p>
+              </div>
             </div>
-          </div>
-
-          <div className="mt-6 pt-5 border-t divider">
-            <Badge tone="indigo" dot>
-              Bonus
-            </Badge>
-            <p className="mt-2 text-[12px] text-zinc-500 leading-relaxed">
-              The output uses the OS&apos;s callout, markdown tables, and section-card primitives — so
-              it renders as a polished document, not raw text.
-            </p>
+            <div className="flex items-start gap-3">
+              <div className="grid h-7 w-7 place-items-center rounded-md bg-emerald-50 text-emerald-700 shrink-0">
+                <Calendar className="h-3.5 w-3.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-zinc-900">3. Attach</div>
+                <p className="mt-0.5 text-[12px] text-zinc-500 leading-relaxed">
+                  Copy, download, or save as PDF. Send with your application.
+                </p>
+              </div>
+            </div>
           </div>
         </Card>
       )}
