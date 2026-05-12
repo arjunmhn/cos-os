@@ -34,6 +34,70 @@ OUTPUT FORMAT — respond with VALID JSON ONLY, matching this exact schema. No p
     "keyHires": ["string", ...] — 3-5 specific role titles this company is prioritizing,
     "suggestedOkrThemes": ["string", ...] — 3-5 quarterly OKR themes specific to this company,
     "ceoName": "string — CEO's name if known or inferable, else empty string"
+  },
+  "seed": {
+    "okrs": [
+      {
+        "title": "string — objective title, specific to the company",
+        "owner": "string — function lead (e.g. 'CRO', 'CPO', 'CoS', 'CEO')",
+        "quarter": "string — e.g. 'Q1' or 'Q3 2026'",
+        "why": "string — 1-2 sentences on why this objective matters now",
+        "keyResults": [
+          {
+            "title": "string — measurable key result",
+            "metric": "string — unit ('%', 'days', 'logos', '$M', etc.)",
+            "start": number,
+            "current": number,
+            "target": number,
+            "status": "on-track | at-risk | off-track | completed"
+          }
+        ]
+      }
+    ],
+    "deals": [
+      {
+        "name": "string — realistic customer name for this company's sector",
+        "segment": "smb | mid-market | enterprise",
+        "stage": "discovery | evaluation | proposal | commit | best-case",
+        "acv": number,
+        "owner": "string — AE / rep name",
+        "nextAction": "string — concrete next buyer-side action",
+        "daysOut": integer,
+        "slipped": boolean,
+        "inIcp": boolean
+      }
+    ],
+    "candidates": [
+      {
+        "name": "string — diverse, realistic name",
+        "roleTitle": "string — must match one of the seed roles[].title or one of context.keyHires",
+        "stage": "sourcing | screen | onsite | offer | hired",
+        "daysInStage": integer,
+        "source": "string — e.g. Referral, Inbound, Outbound, Recruiter"
+      }
+    ],
+    "roles": [
+      {
+        "title": "string — must be one of context.keyHires",
+        "function": "string — Engineering, GTM, Marketing, etc.",
+        "hiringManager": "string — CEO, CTO, CPO, etc.",
+        "status": "drafting | open | in-loop | filled",
+        "mission": "string — one paragraph; the 12-18 month outcome state this role must produce",
+        "outcomes": ["string", ...] — 3-4 measurable outcomes,
+        "mustHaves": ["string", ...] — 2-3 behavior-based must-have competencies,
+        "niceToHaves": ["string", ...] — 1-2 tiebreakers
+      }
+    ],
+    "decisions": [
+      {
+        "title": "string — short decision label",
+        "context": "string — 1-2 sentences why this decision was needed",
+        "decision": "string — 1-2 sentences on what was decided",
+        "owner": "string — CEO, CRO, CoS, etc.",
+        "reversible": boolean,
+        "daysAgo": integer
+      }
+    ]
   }
 }
 
@@ -50,6 +114,14 @@ RULES:
 - keyHires — 3-5 specific role titles (e.g., "VP Engineering", "Founding Product Marketing Manager", "Enterprise AE — East"). Reflect what a company at this stage actually needs.
 - suggestedOkrThemes — 3-5 quarterly themes specific to this company. Examples of specific: "Lift enterprise win rate above 25%", "Land v2 platform GA on schedule", "Hire 10 engineers ramped by Day 90". Avoid generic: "improve sales", "grow team".
 - ceoName — leave empty string if not in source and not obvious from public knowledge.
+
+SEED DATA RULES — populate \`seed.*\` so the OS feels populated for this specific company. Every item must reflect the company's sector, stage, and strategic moment. Generic placeholders are unacceptable.
+
+- seed.okrs — EXACTLY 3 objectives. First should map to the company's #1 bet (from strategicMoment). Each has 2-3 key results. Numbers should be plausible for the company's stage and unit-appropriate. Mix statuses (at least one at-risk or off-track to make the dashboard interesting). Owners should be C-suite or function leads.
+- seed.deals — 5-7 deals. Customer names MUST be realistic for THIS company's sector — e.g. for a dev-tools company, name actual tech companies likely to buy ("Anthropic", "Datadog", "Stripe Engineering"); for a healthcare SaaS, name hospitals or clinics ("Mayo Clinic", "One Medical"); for a fintech, name financial firms. Mix segments (1-2 enterprise, 2-3 mid-market, 1-2 smb if relevant). Mix stages: at least 1 commit, 1 best-case, 2 evaluation/proposal, 1 discovery. Exactly 1 slipped deal. ACV ranges: smb $5-50k, mid-market $50-300k, enterprise $300k-2M. inIcp true for ~60% of deals.
+- seed.candidates — 4-6 candidates. Diverse, realistic names. Mix stages: at least 1 offer, 2 onsite, 2 screen, 1 sourcing. daysInStage realistic: sourcing 5-15, screen 3-10, onsite 2-7, offer 1-5. roleTitle MUST match one of context.keyHires (the seed.roles will include the top 2-3 of those). Source mixed: Referral, Inbound, Outbound, Recruiter, Network.
+- seed.roles — EXACTLY 2-3 roles. Titles MUST be chosen from context.keyHires (the top 2-3 by priority). Full MOC per role: mission is a real paragraph (12-18 month outcome state), 3-4 measurable outcomes with numbers, 2-3 behavior-based must-haves (e.g. "Has scaled a sales org from 5 to 20 AEs in a vertical SaaS context"), 1-2 nice-to-haves. Status: 1 'in-loop', 1 'open', 1 'drafting' if generating 3.
+- seed.decisions — EXACTLY 3 decisions. One hiring decision, one GTM/sales decision, one product/strategy decision. Each must directly reflect the company's strategicMoment — not generic. Context is 1-2 sentences, decision is 1-2 sentences. daysAgo: 3, 10, 22 (varying recency). Owners are real function leaders. Mix reversibility (1 one-way door, 2 reversible).
 
 CRITICAL: emit ONLY the JSON object. The output will be parsed by JSON.parse — any prose, code fences, or commentary will break the pipeline.
 `;

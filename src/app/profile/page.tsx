@@ -10,12 +10,13 @@ import {
   STAGE_LABELS,
   useCompanyProfile,
 } from "@/components/providers/company-profile-provider";
-import type { CompanyProfile } from "@/lib/types";
+import type { CompanyProfile, Decision, Objective } from "@/lib/types";
 import { useState } from "react";
 import {
   AlertTriangle,
   Building2,
   Check,
+  Database,
   RotateCcw,
   Save,
   Sparkles,
@@ -23,6 +24,9 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { RoleMoc, Candidate } from "@/lib/content/people";
+import type { Deal } from "@/lib/content/gtm";
+import { writeStorage } from "@/lib/storage";
 
 type AdaptResult = {
   profile: {
@@ -42,6 +46,13 @@ type AdaptResult = {
     suggestedOkrThemes: string[];
     ceoName: string;
   };
+  seed: {
+    okrs: Objective[];
+    deals: Deal[];
+    candidates: Candidate[];
+    roles: RoleMoc[];
+    decisions: Decision[];
+  } | null;
 };
 
 export default function ProfilePage() {
@@ -77,7 +88,7 @@ export default function ProfilePage() {
       if (!res.ok) {
         setAdaptError(data.error || "Adaptation failed.");
       } else {
-        setAdaptResult({ profile: data.profile, context: data.context });
+        setAdaptResult({ profile: data.profile, context: data.context, seed: data.seed ?? null });
       }
     } catch {
       setAdaptError("Network error. Try again.");
@@ -102,6 +113,16 @@ export default function ProfilePage() {
     };
     setDraft(newProfile);
     setProfile(newProfile);
+
+    // Reseed module data if the API returned seed
+    if (adaptResult.seed) {
+      writeStorage("okrs", adaptResult.seed.okrs);
+      writeStorage("deals", adaptResult.seed.deals);
+      writeStorage("candidates", adaptResult.seed.candidates);
+      writeStorage("roles", adaptResult.seed.roles);
+      writeStorage("decisions", adaptResult.seed.decisions);
+    }
+
     setSavedAt(Date.now());
     setAdaptResult(null);
     setSource("");
@@ -495,6 +516,166 @@ function AdaptPreview({
           )}
         </div>
       </div>
+
+      {/* Seed data preview */}
+      {result.seed && (
+        <div className="px-5 py-5 border-t divider bg-zinc-50/40">
+          <div className="flex items-center gap-2 mb-3">
+            <Database className="h-4 w-4 text-fuchsia-600" />
+            <span className="text-[10.5px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
+              Sample data to reseed
+            </span>
+            <Badge tone="fuchsia">applies on click</Badge>
+          </div>
+
+          <p className="text-[12px] text-zinc-600 leading-relaxed mb-4 max-w-3xl">
+            On <span className="font-semibold text-zinc-900">Apply</span>, every module&apos;s sample data
+            will be replaced with company-specific OKRs, deals, candidates, roles, and decisions. The OS
+            will look like it was built for this company on day one.
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+            <SeedCountTile
+              label="OKRs"
+              count={result.seed.okrs.length}
+              detail={`${result.seed.okrs.reduce((s, o) => s + o.keyResults.length, 0)} KRs`}
+            />
+            <SeedCountTile
+              label="Deals"
+              count={result.seed.deals.length}
+              detail={`$${(
+                result.seed.deals.reduce((s, d) => s + (d.acv || 0), 0) / 1e6
+              ).toFixed(1)}M pipe`}
+            />
+            <SeedCountTile
+              label="Candidates"
+              count={result.seed.candidates.length}
+              detail={`${result.seed.roles.length} roles`}
+            />
+            <SeedCountTile
+              label="Roles (MOC)"
+              count={result.seed.roles.length}
+              detail="full specs"
+            />
+            <SeedCountTile
+              label="Decisions"
+              count={result.seed.decisions.length}
+              detail="recent"
+            />
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {result.seed.okrs.length > 0 && (
+              <div className="rounded-lg border divider px-3.5 py-2.5 bg-white">
+                <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-zinc-500 mb-1.5">
+                  Objectives
+                </div>
+                <ul className="space-y-1">
+                  {result.seed.okrs.map((o) => (
+                    <li
+                      key={o.id}
+                      className="text-[12.5px] text-zinc-800 leading-snug flex items-start gap-1.5"
+                    >
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-indigo-500 shrink-0" />
+                      <span>
+                        <span className="font-medium">{o.title}</span>{" "}
+                        <span className="text-zinc-400">· {o.owner}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {result.seed.deals.length > 0 && (
+              <div className="rounded-lg border divider px-3.5 py-2.5 bg-white">
+                <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-zinc-500 mb-1.5">
+                  Pipeline
+                </div>
+                <ul className="space-y-1">
+                  {result.seed.deals.slice(0, 5).map((d) => (
+                    <li
+                      key={d.id}
+                      className="text-[12.5px] text-zinc-800 leading-snug flex items-start gap-1.5"
+                    >
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-emerald-500 shrink-0" />
+                      <span>
+                        <span className="font-medium">{d.name}</span>{" "}
+                        <span className="text-zinc-400">
+                          · {d.segment} · ${(d.acv / 1000).toFixed(0)}k
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                  {result.seed.deals.length > 5 && (
+                    <li className="text-[11px] text-zinc-400 pl-3">
+                      + {result.seed.deals.length - 5} more
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {result.seed.roles.length > 0 && (
+              <div className="rounded-lg border divider px-3.5 py-2.5 bg-white">
+                <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-zinc-500 mb-1.5">
+                  Roles (MOC drafted)
+                </div>
+                <ul className="space-y-1">
+                  {result.seed.roles.map((r) => (
+                    <li
+                      key={r.id}
+                      className="text-[12.5px] text-zinc-800 leading-snug flex items-start gap-1.5"
+                    >
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-fuchsia-500 shrink-0" />
+                      <span>
+                        <span className="font-medium">{r.title}</span>{" "}
+                        <span className="text-zinc-400">· {r.status}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {result.seed.decisions.length > 0 && (
+              <div className="rounded-lg border divider px-3.5 py-2.5 bg-white">
+                <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-zinc-500 mb-1.5">
+                  Recent decisions
+                </div>
+                <ul className="space-y-1">
+                  {result.seed.decisions.map((d) => (
+                    <li
+                      key={d.id}
+                      className="text-[12.5px] text-zinc-800 leading-snug flex items-start gap-1.5"
+                    >
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-amber-500 shrink-0" />
+                      <span>
+                        <span className="font-medium">{d.title}</span>{" "}
+                        <span className="text-zinc-400">· {d.owner}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SeedCountTile({ label, count, detail }: { label: string; count: number; detail: string }) {
+  return (
+    <div className="rounded-lg border divider bg-white px-3 py-2.5">
+      <div className="text-[10px] uppercase tracking-[0.1em] font-semibold text-zinc-500">
+        {label}
+      </div>
+      <div className="mt-0.5 text-[20px] font-semibold tracking-tight text-zinc-900 leading-none">
+        {count}
+      </div>
+      <div className="mt-0.5 text-[10.5px] text-zinc-500 truncate">{detail}</div>
     </div>
   );
 }
