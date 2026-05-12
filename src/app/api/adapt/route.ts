@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { ADAPT_PERSONA } from "@/lib/cos-persona";
 
 const MODEL = "claude-sonnet-4-6";
-const MAX_TOKENS = 4000;
+const MAX_TOKENS = 8000;
 
 const MIN_SOURCE_CHARS = 3;
 const MAX_SOURCE_CHARS = 20000;
@@ -215,14 +215,95 @@ function safeExtractJson(text: string): unknown | null {
   const fenced = text.match(/```(?:json)?\s*\n([\s\S]*?)\n```/);
   const candidate = (fenced ? fenced[1] : text).trim();
   const firstBrace = candidate.indexOf("{");
+  if (firstBrace < 0) return null;
   const lastBrace = candidate.lastIndexOf("}");
-  if (firstBrace < 0 || lastBrace < firstBrace) return null;
-  const slice = candidate.slice(firstBrace, lastBrace + 1);
+
+  // First try: take everything from { to the last }
+  if (lastBrace > firstBrace) {
+    const slice = candidate.slice(firstBrace, lastBrace + 1);
+    try {
+      return JSON.parse(slice);
+    } catch {
+      // fall through to repair
+    }
+  }
+
+  // Repair attempt: assume the model got cut off. Close any open string,
+  // arrays, and objects so we recover the partial structure.
+  const fromStart = candidate.slice(firstBrace);
+  const repaired = repairTruncatedJson(fromStart);
   try {
-    return JSON.parse(slice);
+    return JSON.parse(repaired);
   } catch {
     return null;
   }
+}
+
+function repairTruncatedJson(text: string): string {
+  let inString = false;
+  let escape = false;
+  const stack: string[] = []; // tracks "{" and "[" opens
+
+  let lastSafeEnd = -1; // index of last char that left us at a stable state
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === "\\") {
+      if (inString) escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{" || ch === "[") {
+      stack.push(ch);
+    } else if (ch === "}") {
+      if (stack[stack.length - 1] === "{") stack.pop();
+    } else if (ch === "]") {
+      if (stack[stack.length - 1] === "[") stack.pop();
+    }
+    // Track positions where stack is non-empty but we've completed a value cleanly.
+    if (!inString && (ch === "}" || ch === "]" || ch === ",")) {
+      lastSafeEnd = i;
+    }
+  }
+
+  // If we ended inside a string, drop back to the last safe boundary
+  // and re-walk the stack to that point.
+  let working = text;
+  if (inString && lastSafeEnd >= 0) {
+    working = text.slice(0, lastSafeEnd + 1);
+    // Recompute stack for the trimmed view
+    stack.length = 0;
+    let s = false, e = false;
+    for (let i = 0; i < working.length; i++) {
+      const ch = working[i];
+      if (e) { e = false; continue; }
+      if (ch === "\\" && s) { e = true; continue; }
+      if (ch === '"') { s = !s; continue; }
+      if (s) continue;
+      if (ch === "{" || ch === "[") stack.push(ch);
+      else if (ch === "}" && stack[stack.length - 1] === "{") stack.pop();
+      else if (ch === "]" && stack[stack.length - 1] === "[") stack.pop();
+    }
+  }
+
+  // Trim a trailing comma that would leave an array/object syntactically wrong
+  working = working.replace(/,\s*$/, "");
+
+  // Close remaining structures
+  while (stack.length > 0) {
+    const top = stack.pop();
+    working += top === "{" ? "}" : "]";
+  }
+
+  return working;
 }
 
 const VALID_STAGES: Stage[] = ["pre-seed", "seed", "series-a", "series-b", "series-c-plus"];
